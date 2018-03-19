@@ -85,8 +85,10 @@ export default {
   },
   methods: {
     edit (form) {
-      this.form.rules = this.$refs.tree.getCheckedKeys().toString()
-      console.log(this.form.rules)
+      const checked = this.$refs.tree.getCheckedKeys().toString()
+      const half = this.$refs.tree.getHalfCheckedKeys().toString()
+      console.log(checked)
+      console.log(half)
       // this.$refs[form].validate((valid) => {
       //   if (valid) {
       //     this.isLoading = true
