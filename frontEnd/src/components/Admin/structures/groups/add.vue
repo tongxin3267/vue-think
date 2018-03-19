@@ -20,19 +20,14 @@
       </el-form-item>
       <el-form-item label="权限分配">
         <div class="bor-gray h-400 ovf-y-auto bor-ra-5 bg-wh">
-          <div v-for="item in nodes" :key="item.id">
-            <div class="bor-b-ccc bg-gra p-l-10 p-r-10">
-              <el-checkbox v-model="item.check" @change="selectProjectRule(item)">{{item.else}}</el-checkbox>
-            </div>
-            <div v-for="childItem in item.child" :key="childItem.id">
-              <div class="p-l-20 bor-b-ccc">
-                <el-checkbox v-model="childItem.check" @change="selectModuleRule(childItem, item, childItem.child)">{{childItem.else}}</el-checkbox>
-              </div>
-              <div class="p-l-40 bor-b-ccc bg-gra">
-                <el-checkbox v-for="grandChildItem in childItem.child" :key="grandChildItem.id" v-model="grandChildItem.check" @change="selectActionRule(grandChildItem, childItem, item)">{{grandChildItem.else}}</el-checkbox>
-              </div>
-            </div>
-          </div>
+          <el-tree :data="nodes"
+            show-checkbox
+            node-key="id"
+            :default-expanded-keys="defaultExpanded"
+            :default-checked-keys="defaultChecked"
+            :props="ruleProps"
+            ref="tree">
+          </el-tree>
         </div>
       </el-form-item>
 			<el-form-item>
@@ -51,6 +46,12 @@
   export default {
     data() {
       return {
+        defaultExpanded: [],
+        defaultChecked: [],
+        ruleProps: {
+          children: 'child',
+          label: 'title'
+        },
         isLoading: false,
         form: {
           title: '',
@@ -70,7 +71,7 @@
     },
     methods: {
       add(form) {
-        this.form.rules = this.selectedNodes.toString()
+        this.form.rules = this.$refs.tree.getCheckedKeys().toString()
         this.$refs[form].validate((valid) => {
           if (valid) {
             this.isLoading = true
