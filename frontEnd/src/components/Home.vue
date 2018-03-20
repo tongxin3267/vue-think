@@ -236,9 +236,6 @@
       })
     },
     computed: {
-      routerShow() {
-        return this.$store.state.routerShow
-      },
       showLeftMenu() {
         this.hasChildMenu = this.$store.state.showLeftMenu
         return this.$store.state.showLeftMenu
