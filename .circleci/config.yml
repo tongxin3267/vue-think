@@ -1,0 +1,84 @@
+version: 2
+
+defaults: &defaults
+  working_directory: ~/project/vue-think
+  docker:
+    - image: circleci/node:8.12
+
+jobs:
+  install:
+    <<: *defaults
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+          - v1-vue-think-{{ .Branch }}-{{ checksum "frontEnd/package.json" }}
+          - v1-vue-think-{{ .Branch }}-
+
+      - run: cd frontEnd && npm install
+
+      - save_cache:
+          key: v1-vue-think-{{ .Branch }}-{{ checksum "frontEnd/package.json" }}
+          paths:
+            - frontEnd/node_modules
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - vue-think
+  build:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/project
+
+      - restore_cache:
+          keys:
+            - v1-vue-think-{{ .Branch }}-build
+
+      - run: cd frontEnd && npm run build
+
+      - save_cache:
+          key: v1-vue-think-{{ .Branch }}-build
+          paths:
+            - frontEnd/dist
+
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - vue-think
+  deploy:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run: 
+          name: Clean frontEnd
+          command: ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "cd $DEPLOY_FRONTEND_PATH && rm -rf ./*"
+      - run: 
+          name: Deploy frontEnd
+          command: cd ~/project/vue-think/frontEnd/dist && tar -czf dist.tar.gz ./* && scp -o StrictHostKeyChecking=no -r ~/project/vue-think/frontEnd/dist/dist.tar.gz $SSH_USER@$SSH_HOST:$DEPLOY_FRONTEND_PATH
+      - run: ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "cd $DEPLOY_FRONTEND_PATH && tar -xzf dist.tar.gz"
+      - run: 
+          name: Clean backEnd
+          command: ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "cd $DEPLOY_BACKEND_PATH && rm -rf ./php/*"
+      - run: 
+          name: Deploy backEnd
+          command: cd ~/project/vue-think/php && tar -czf php.tar.gz ./* && scp -o StrictHostKeyChecking=no -r ~/project/vue-think/php/php.tar.gz $SSH_USER@$SSH_HOST:$DEPLOY_BACKEND_PATH/php/
+      - run: ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "cd $DEPLOY_BACKEND_PATH/php/ && tar -xzf php.tar.gz"
+      - run: ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "/bin/cp -f $LOCAL_BACKEND_CONFIG_PATH/database.php $DEPLOY_BACKEND_PATH/php/config/database.php"
+      - run: ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "/bin/cp -f $LOCAL_BACKEND_CONFIG_PATH/extra/cus_config.php $DEPLOY_BACKEND_PATH/php/config/extra/cus_config.php"
+workflows:
+  version: 2
+  install-and-parallel-test:
+    jobs:
+      - install
+      - build:
+          requires:
+            - install
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
